@@ -10,6 +10,16 @@ struct SigningKey<C> {
     metadata: Metadata<C>,
 }
 
+impl<Comment: std::fmt::Debug> std::fmt::Debug for SigningKey<Comment> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SigningKey")
+            .field("id", &self.secret_key.public().keynum())
+            .field("secret_key", &"<secret>")
+            .field("metadata", &self.metadata)
+            .finish()
+    }
+}
+
 mod signify_serde {
     use libsignify::{Codeable, PrivateKey};
     use serde::{Deserialize, Deserializer, Serializer};
@@ -32,15 +42,36 @@ mod signify_serde {
     }
 }
 
-// impl<Comment: std::fmt::Debug> std::fmt::Debug for SigningKey<Comment> {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_struct("SigningKey")
-//             .field("id", &self.secret_key.public().keynum())
-//             .field("secret_key", &"<secret>")
-//             .field("metadata", &self.metadata)
-//             .finish()
-//     }
-// }
+impl<C> SigningKey<C> {
+    pub fn generate() -> Self {
+        let mut rng = rand_core::OsRng {};
+        let secret_key =
+            libsignify::PrivateKey::generate(&mut rng, libsignify::NewKeyOpts::NoEncryption)
+                .expect("private key without encryption");
+
+        Self {
+            secret_key,
+            metadata: Default::default(),
+        }
+    }
+
+    pub fn with_comment(self, comment: C) -> Self {
+        Self {
+            metadata: self.metadata.with_comment(comment),
+            secret_key: self.secret_key,
+        }
+    }
+
+    pub fn set_expiration(self, timestamp: Timestamp) -> Self {
+        Self {
+            metadata: Metadata {
+                expired_at: Some(timestamp),
+                ..Default::default()
+            },
+            secret_key: self.secret_key,
+        }
+    }
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Metadata<T> {
@@ -71,9 +102,90 @@ impl<T> Metadata<T> {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Message<T> {
+    data: T,
+    timestamp: Timestamp,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expiration: Option<Timestamp>,
+}
+
+struct SignatureBuilder<M: Serialize, C> {
+    message: M,
+
+    /// If value is None, timestamp will be set when message will be signed
+    timestamp: Option<Timestamp>,
+
+    expires_at: Option<Timestamp>,
+
+    comment: Option<C>,
+}
+
+impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
+    pub fn new(message: M) -> Self {
+        Self {
+            message,
+            timestamp: None,
+            expires_at: None,
+            comment: None,
+        }
+    }
+
+    /// This timestamp **will be** signed with the message.
+    pub fn timestamp(mut self, timestamp: Timestamp) -> Self {
+        self.timestamp = Some(timestamp);
+        self
+    }
+
+    /// If set, this timestamp **will be** signed with the message.
+    pub fn expiration(mut self, timestamp: Timestamp) -> Self {
+        self.expires_at = Some(timestamp);
+        self
+    }
+
+    /// The comment is not signed
+    pub fn comment(mut self, comment: C) -> Self {
+        self.comment = Some(comment);
+        self
+    }
+
+    pub fn sign<S>(self, signing_key: &SigningKey<S>) -> Signature<M, C> {
+        use libsignify::Codeable;
+
+        let timestamp = self.timestamp.unwrap_or(Timestamp::now());
+        if let Some(expiration) = self.expires_at {
+            if expiration <= timestamp {
+                // TODO: unwrap
+                panic!("cannot happen");
+            }
+        }
+
+        // Encode message in bytes
+        let message = Message {
+            data: self.message,
+            timestamp,
+            expiration: self.expires_at,
+        };
+        // TODO: unwrap
+        let message_bytes =
+            bincode::serde::encode_to_vec(&message, bincode::config::standard()).expect("bincode");
+
+        // Sign the message with secret key, and encode to a base64 string
+        let signature = signing_key.secret_key.sign(&message_bytes);
+        let bytes = signature.as_bytes();
+        let signature = base64ct::Base64::encode_string(&bytes);
+
+        Signature {
+            signed_data: message,
+            signature,
+            comment: self.comment,
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Signature<T, C> {
     /// The data signed
-    signed_data: T,
+    signed_data: Message<T>,
     /// Base64 signature
     signature: String,
     /// Metadata
@@ -81,76 +193,29 @@ struct Signature<T, C> {
     comment: Option<C>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct Message<T> {
-    data: T,
-    timestamp: Timestamp,
-}
-
-impl<CKey> SigningKey<CKey> {
-    pub fn generate() -> Self {
-        let mut rng = rand_core::OsRng {};
-        let secret_key =
-            libsignify::PrivateKey::generate(&mut rng, libsignify::NewKeyOpts::NoEncryption)
-                .expect("private key without encryption");
-
-        Self {
-            secret_key,
-            metadata: Default::default(),
-        }
-    }
-
-    pub fn with_comment(self, comment: CKey) -> Self {
-        Self {
-            metadata: self.metadata.with_comment(comment),
-            secret_key: self.secret_key,
-        }
-    }
-
-    pub fn set_expiration(self, timestamp: Timestamp) -> Self {
-        Self {
-            metadata: Metadata {
-                expired_at: Some(timestamp),
-                ..Default::default()
-            },
-            secret_key: self.secret_key,
-        }
-    }
-
-    // TODO: move to struct SignatureBuilder
-    // TODO: option to set when signature will expire
-    pub fn sign<M: Serialize, CSignature>(
-        &self,
-        message: M,
-        comment: Option<CSignature>,
-    ) -> Signature<Message<M>, CSignature> {
+impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
+    pub fn verify(self, public_key: libsignify::PublicKey) -> Message<T> {
         use libsignify::Codeable;
 
-        // Encode message in bytes
-        let message_to_sign = Message {
-            data: message,
-            timestamp: Timestamp::now(),
-        };
         // TODO: unwrap
+        let bytes = base64ct::Base64::decode_vec(&self.signature).unwrap();
+        // TODO: unwrap
+        let signature = libsignify::Signature::from_bytes(&bytes).unwrap();
+
+        // TODO: unwrap, error handling
         let message_bytes =
-            bincode::serde::encode_to_vec(&message_to_sign, bincode::config::standard())
-                .expect("bincode");
+            bincode::serde::encode_to_vec(&self.signed_data, bincode::config::standard()).expect("bincode");
+        public_key.verify(&message_bytes, &signature).unwrap();
 
-        // Sign the message with secret key, and encode to a base64 string
-        let signature = self.secret_key.sign(&message_bytes);
-        let bytes = signature.as_bytes();
-        let signature = base64ct::Base64::encode_string(&bytes);
-
-        Signature {
-            signed_data: message_to_sign,
-            signature,
-            comment,
-        }
+        self.signed_data
     }
 
-    // TODO: trait "Signing" and "Verifying" ? -> NO just use Codable
-    pub fn verify(&self) {
-        // self.secret_key.public.verify()
+    pub fn signature(&self) -> &str {
+        &self.signature
+    }
+
+    pub fn comment(&self) -> Option<&C> {
+        self.comment.as_ref()
     }
 }
 
@@ -191,20 +256,25 @@ fn main() {
 
     let sec: SigningKey<String> = serde_json::from_str(&json).unwrap();
 
-    let message = MyData {
+    let to_sign = SignatureBuilder::new(MyData {
         name: "toto".into(),
         action: "mange du gateau".into(),
         age: 43,
-    };
-
-    // let comment = Some("gateau au chocolat");
-    let comment = Some(MyComment {
+    })
+    .timestamp(Timestamp::now())
+    .expiration(expiration.timestamp())
+    .comment(MyComment {
         uuid: "uuuuuuiiiiiddd".into(),
         user: "toto".into(),
         signature: "sssss".into(),
     });
-    // let comment: Option<String> = None;
-    let signature = sec.sign(message, comment);
+    // .set_comment("toto mange du gateau");
+    let signature = to_sign.sign(&sec);
     let signature_json = serde_json::to_string(&signature).unwrap();
     println!("{signature_json}");
+
+    let signature: Signature<MyData, MyComment> = serde_json::from_str(&signature_json).unwrap();
+    let message = signature.verify(sec.secret_key.public());
+    let message_json = serde_json::to_string(&message).unwrap();
+    println!("{message_json}");
 }
