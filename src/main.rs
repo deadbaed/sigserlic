@@ -1,17 +1,14 @@
+use base64ct::Encoding;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 #[derive(serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct SigningKey<Comment> {
+struct SigningKey<C> {
     #[serde(with = "signify_serde")]
     secret_key: libsignify::PrivateKey,
-    comment: Option<Comment>,
-    created_at: Timestamp,
-    expired_at: Option<Timestamp>,
+    #[serde(flatten)]
+    metadata: Metadata<C>,
 }
-
-// TODO: same struct but for public key: generic over impl Codable?
 
 mod signify_serde {
     use libsignify::{Codeable, PrivateKey};
@@ -21,32 +18,76 @@ mod signify_serde {
     where
         S: Serializer,
     {
-        let bytes = key.as_bytes();
-        serializer.serialize_bytes(&bytes)
+        let key_in_hex = hex::encode(key.as_bytes());
+        serializer.serialize_str(&key_in_hex)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<PrivateKey, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
-        PrivateKey::from_bytes(&bytes).map_err(serde::de::Error::custom)
+        let key_in_hex: String = Deserialize::deserialize(deserializer)?;
+        let key_in_bytes = hex::decode(key_in_hex).map_err(serde::de::Error::custom)?;
+        PrivateKey::from_bytes(&key_in_bytes).map_err(serde::de::Error::custom)
     }
 }
 
-impl<Comment: std::fmt::Debug> std::fmt::Debug for SigningKey<Comment> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SigningKey")
-            .field("id", &self.secret_key.public().keynum())
-            .field("secret_key", &"<secret>")
-            .field("comment", &self.comment)
-            .field("created_at", &self.created_at)
-            .field("expired_at", &self.expired_at)
-            .finish()
+// impl<Comment: std::fmt::Debug> std::fmt::Debug for SigningKey<Comment> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("SigningKey")
+//             .field("id", &self.secret_key.public().keynum())
+//             .field("secret_key", &"<secret>")
+//             .field("metadata", &self.metadata)
+//             .finish()
+//     }
+// }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Metadata<T> {
+    created_at: Timestamp,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expired_at: Option<Timestamp>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    comment: Option<T>,
+}
+
+impl<T> Default for Metadata<T> {
+    fn default() -> Self {
+        Self {
+            created_at: Timestamp::now(),
+            expired_at: None,
+            comment: None,
+        }
     }
 }
 
-impl<Comment> SigningKey<Comment> {
+impl<T> Metadata<T> {
+    pub fn with_comment(self, comment: T) -> Self {
+        Self {
+            comment: Some(comment),
+            ..self
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Signature<T, C> {
+    /// The data signed
+    signed_data: T,
+    /// Base64 signature
+    signature: String,
+    /// Metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    comment: Option<C>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Message<T> {
+    data: T,
+    timestamp: Timestamp,
+}
+
+impl<CKey> SigningKey<CKey> {
     pub fn generate() -> Self {
         let mut rng = rand_core::OsRng {};
         let secret_key =
@@ -55,60 +96,115 @@ impl<Comment> SigningKey<Comment> {
 
         Self {
             secret_key,
-            comment: None,
-            created_at: Timestamp::now(),
-            expired_at: None,
-        }
-    }
-    pub fn with_comment(self, comment: Comment) -> Self {
-        Self {
-            comment: Some(comment),
-            ..self
+            metadata: Default::default(),
         }
     }
 
-    pub fn sign<M: AsRef<[u8]>>(&self, message: M, comment: impl AsRef<str>) -> String {
+    pub fn with_comment(self, comment: CKey) -> Self {
+        Self {
+            metadata: self.metadata.with_comment(comment),
+            secret_key: self.secret_key,
+        }
+    }
+
+    pub fn set_expiration(self, timestamp: Timestamp) -> Self {
+        Self {
+            metadata: Metadata {
+                expired_at: Some(timestamp),
+                ..Default::default()
+            },
+            secret_key: self.secret_key,
+        }
+    }
+
+    // TODO: move to struct SignatureBuilder
+    // TODO: option to set when signature will expire
+    pub fn sign<M: Serialize, CSignature>(
+        &self,
+        message: M,
+        comment: Option<CSignature>,
+    ) -> Signature<Message<M>, CSignature> {
         use libsignify::Codeable;
 
-        // TODO: just use codable everywhere
+        // Encode message in bytes
+        let message_to_sign = Message {
+            data: message,
+            timestamp: Timestamp::now(),
+        };
+        // TODO: unwrap
+        let message_bytes =
+            bincode::serde::encode_to_vec(&message_to_sign, bincode::config::standard())
+                .expect("bincode");
 
-        let signature = self.secret_key.sign(message.as_ref());
-        let bytes = signature.to_file_encoding(comment.as_ref());
-        String::from_utf8(bytes).expect("base64 encoding")
+        // Sign the message with secret key, and encode to a base64 string
+        let signature = self.secret_key.sign(&message_bytes);
+        let bytes = signature.as_bytes();
+        let signature = base64ct::Base64::encode_string(&bytes);
+
+        Signature {
+            signed_data: message_to_sign,
+            signature,
+            comment,
+        }
     }
 
     // TODO: trait "Signing" and "Verifying" ? -> NO just use Codable
     pub fn verify(&self) {
         // self.secret_key.public.verify()
     }
+}
 
+#[derive(Serialize, Deserialize, Debug)]
+struct MyData {
+    name: String,
+    action: String,
+    age: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MyComment {
-    name: String,
-    age: u8,
+    uuid: String,
+    user: String,
+    signature: String,
 }
 
 fn main() {
-    // let gen = SigningKey::generate().with_comment("toto mange du gateau");
-    // let gen = SigningKey::generate().with_comment(MyComment {
-    //     name: "Phil".into(),
-    //     age: 24,
-    // });
-    // let json = serde_json::to_string(&gen).unwrap();
-    // println!("{json}");
+    let gen: SigningKey<()> = SigningKey::generate();
+    let expiration = jiff::civil::datetime(2025, 2, 15, 22, 23, 42, 0)
+        .intz("Europe/Paris")
+        .unwrap();
+    let gen = gen.set_expiration(expiration.timestamp());
+    let json = serde_json::to_string(&gen).unwrap();
+    println!("{json}");
 
-    // let gen = r#"{"secret_key":[69,100,66,75,0,0,0,0,105,201,194,244,251,62,153,176,92,59,183,247,172,248,179,36,155,247,135,20,234,184,33,176,163,149,107,85,134,139,219,139,240,1,204,4,162,102,160,160,158,143,19,229,6,97,179,186,122,27,210,145,126,142,179,215,113,189,199,202,15,247,138,21,104,1,197,3,216,62,128,164,73,219,136,94,138,111,36,31,104,9,117,147,52,231,255,213,19,205,249,6,74,61,120,139],"comment":"toto mange du gateau","created_at":"2024-12-09T22:33:36.688418Z","expired_at":null}"#;
-    // let sec: SigningKey<String> = serde_json::from_str(gen).unwrap();
-    //
-    let gen = r#"{"secret_key":[69,100,66,75,0,0,0,0,193,1,162,183,109,65,98,188,97,139,235,93,140,98,53,186,202,208,113,42,161,178,179,7,87,221,143,102,135,87,13,140,136,244,70,2,30,91,191,198,243,109,75,71,9,217,137,44,96,189,164,188,176,38,169,89,84,15,82,98,46,230,103,70,170,0,244,181,175,11,120,68,34,26,63,143,221,132,62,90,240,243,85,224,249,49,155,248,244,227,30,149,128,105,180,153],"comment":{"name":"Phil","age":24},"created_at":"2024-12-09T22:43:19.808324Z","expired_at":null}"#;
-    let sec: SigningKey<MyComment> = serde_json::from_str(gen).unwrap();
+    let gen = SigningKey::generate().with_comment(MyData {
+        name: "Phil".into(),
+        action: "mange du gateau".into(),
+        age: 24,
+    });
+    let json = serde_json::to_string(&gen).unwrap();
+    println!("{json}");
 
-    println!("{:?}", sec);
+    let gen = SigningKey::generate().with_comment("toto mange du gateau");
+    let json = serde_json::to_string(&gen).unwrap();
+    println!("{json}");
 
-    let message = "toto mange du gateau";
-    let comment = "gateau au chocolat";
+    let sec: SigningKey<String> = serde_json::from_str(&json).unwrap();
+
+    let message = MyData {
+        name: "toto".into(),
+        action: "mange du gateau".into(),
+        age: 43,
+    };
+
+    // let comment = Some("gateau au chocolat");
+    let comment = Some(MyComment {
+        uuid: "uuuuuuiiiiiddd".into(),
+        user: "toto".into(),
+        signature: "sssss".into(),
+    });
+    // let comment: Option<String> = None;
     let signature = sec.sign(message, comment);
-    println!("`````\n{signature}\n``````");
+    let signature_json = serde_json::to_string(&signature).unwrap();
+    println!("{signature_json}");
 }
