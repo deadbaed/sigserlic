@@ -15,8 +15,8 @@ pub struct Message<T> {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Signature<T, C> {
-    /// The data signed
-    signed_data: Message<T>,
+    /// The signed artifact
+    signed_artifact: Message<T>,
     /// Base64 signature
     signature: String,
     /// Metadata
@@ -44,14 +44,14 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
         let signature = self.signature()?;
 
         let message_bytes =
-            bincode::serde::encode_to_vec(&self.signed_data, bincode::config::standard())
+            bincode::serde::encode_to_vec(&self.signed_artifact, bincode::config::standard())
                 .map_err(|_| SignatureError::Bincode)?;
 
         public_key
             .verify(&message_bytes, &signature)
             .map_err(SignatureError::Verify)?;
 
-        Ok(self.signed_data)
+        Ok(self.signed_artifact)
     }
 
     pub fn signature(&self) -> Result<libsignify::Signature, SignatureError> {

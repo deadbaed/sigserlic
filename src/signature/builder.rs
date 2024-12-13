@@ -78,7 +78,7 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
         let signature = base64ct::Base64::encode_string(&bytes);
 
         Ok(Signature {
-            signed_data: message,
+            signed_artifact: message,
             signature,
             comment: self.comment,
         })
