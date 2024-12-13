@@ -1,4 +1,4 @@
-use signify_test::*;
+use signify_serde::*;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
