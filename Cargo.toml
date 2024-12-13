@@ -10,6 +10,7 @@ rand_core = { version = "0.6.4", features = ["std"] }
 jiff = { version = "0.1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-base64ct = "1"
+base64ct = { version = "1", features = ["std"] }
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
 hex = "0.4.3"
+thiserror = "2"

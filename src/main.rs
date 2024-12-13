@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct SigningKey<C> {
-    #[serde(with = "signify_serde")]
+    #[serde(with = "private_key_serde")]
     secret_key: libsignify::PrivateKey,
     #[serde(flatten)]
     metadata: Metadata<C>,
@@ -20,7 +20,7 @@ impl<Comment: std::fmt::Debug> std::fmt::Debug for SigningKey<Comment> {
     }
 }
 
-mod signify_serde {
+mod private_key_serde {
     use libsignify::{Codeable, PrivateKey};
     use serde::{Deserialize, Deserializer, Serializer};
 
@@ -74,6 +74,51 @@ impl<C> SigningKey<C> {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PublicKey<C> {
+    #[serde(with = "public_key_serde")]
+    public_key: libsignify::PublicKey,
+    #[serde(flatten)]
+    metadata: Metadata<C>,
+}
+
+mod public_key_serde {
+    use libsignify::{Codeable, PublicKey};
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(key: &PublicKey, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let key_in_hex = hex::encode(key.as_bytes());
+        serializer.serialize_str(&key_in_hex)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<PublicKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let key_in_hex: String = Deserialize::deserialize(deserializer)?;
+        let key_in_bytes = hex::decode(key_in_hex).map_err(serde::de::Error::custom)?;
+        PublicKey::from_bytes(&key_in_bytes).map_err(serde::de::Error::custom)
+    }
+}
+
+impl<C> From<SigningKey<C>> for PublicKey<C> {
+    fn from(value: SigningKey<C>) -> Self {
+        Self {
+            public_key: value.secret_key.public(),
+            metadata: value.metadata,
+        }
+    }
+}
+
+impl<C> PublicKey<C> {
+    pub fn keynum(&self) -> libsignify::KeyNumber {
+        self.public_key.keynum()
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Metadata<T> {
     created_at: Timestamp,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -120,6 +165,14 @@ struct SignatureBuilder<M: Serialize, C> {
     comment: Option<C>,
 }
 
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+enum SignatureBuilderError {
+    #[error("expiration is before timestamp")]
+    PastExpiration,
+    #[error("encoding message in binary format")]
+    Bincode,
+}
+
 impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
     pub fn new(message: M) -> Self {
         Self {
@@ -148,15 +201,17 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
         self
     }
 
-    pub fn sign<S>(self, signing_key: &SigningKey<S>) -> Signature<M, C> {
+    pub fn sign<S>(
+        self,
+        signing_key: &SigningKey<S>,
+    ) -> Result<Signature<M, C>, SignatureBuilderError> {
         use libsignify::Codeable;
 
         let timestamp = self.timestamp.unwrap_or(Timestamp::now());
         if let Some(expiration) = self.expires_at {
-            if expiration <= timestamp {
-                // TODO: unwrap
-                panic!("cannot happen");
-            }
+            (timestamp <= expiration)
+                .then_some(())
+                .ok_or(SignatureBuilderError::PastExpiration)?;
         }
 
         // Encode message in bytes
@@ -165,20 +220,19 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
             timestamp,
             expiration: self.expires_at,
         };
-        // TODO: unwrap
-        let message_bytes =
-            bincode::serde::encode_to_vec(&message, bincode::config::standard()).expect("bincode");
+        let message_bytes = bincode::serde::encode_to_vec(&message, bincode::config::standard())
+            .map_err(|_| SignatureBuilderError::Bincode)?;
 
         // Sign the message with secret key, and encode to a base64 string
         let signature = signing_key.secret_key.sign(&message_bytes);
         let bytes = signature.as_bytes();
         let signature = base64ct::Base64::encode_string(&bytes);
 
-        Signature {
+        Ok(Signature {
             signed_data: message,
             signature,
             comment: self.comment,
-        }
+        })
     }
 }
 
@@ -193,25 +247,39 @@ struct Signature<T, C> {
     comment: Option<C>,
 }
 
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+enum SignatureError {
+    #[error("decoding signature: {0}")]
+    Signature(#[from] libsignify::Error),
+    #[error("decoding base64: {0}")]
+    Base64(#[from] base64ct::Error),
+    #[error("encoding message in binary format")]
+    Bincode,
+}
+
 impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
-    pub fn verify(self, public_key: libsignify::PublicKey) -> Message<T> {
-        use libsignify::Codeable;
+    pub fn verify<CPubKey>(
+        self,
+        public_key: &PublicKey<CPubKey>,
+    ) -> Result<Message<T>, SignatureError> {
+        let signature = self.signature()?;
 
-        // TODO: unwrap
-        let bytes = base64ct::Base64::decode_vec(&self.signature).unwrap();
-        // TODO: unwrap
-        let signature = libsignify::Signature::from_bytes(&bytes).unwrap();
-
-        // TODO: unwrap, error handling
         let message_bytes =
-            bincode::serde::encode_to_vec(&self.signed_data, bincode::config::standard()).expect("bincode");
-        public_key.verify(&message_bytes, &signature).unwrap();
+            bincode::serde::encode_to_vec(&self.signed_data, bincode::config::standard())
+                .map_err(|_| SignatureError::Bincode)?;
+        public_key
+            .public_key
+            .verify(&message_bytes, &signature)
+            .unwrap();
 
-        self.signed_data
+        Ok(self.signed_data)
     }
 
-    pub fn signature(&self) -> &str {
-        &self.signature
+    pub fn signature(&self) -> Result<libsignify::Signature, SignatureError> {
+        use libsignify::Codeable;
+
+        let bytes = base64ct::Base64::decode_vec(&self.signature)?;
+        Ok(libsignify::Signature::from_bytes(&bytes)?)
     }
 
     pub fn comment(&self) -> Option<&C> {
@@ -254,7 +322,7 @@ fn main() {
     let json = serde_json::to_string(&gen).unwrap();
     println!("{json}");
 
-    let sec: SigningKey<String> = serde_json::from_str(&json).unwrap();
+    let sec: SigningKey<&str> = serde_json::from_str(&json).unwrap();
 
     let to_sign = SignatureBuilder::new(MyData {
         name: "toto".into(),
@@ -268,13 +336,22 @@ fn main() {
         user: "toto".into(),
         signature: "sssss".into(),
     });
-    // .set_comment("toto mange du gateau");
-    let signature = to_sign.sign(&sec);
+    let signature = to_sign.sign(&sec).expect("failed to sign");
     let signature_json = serde_json::to_string(&signature).unwrap();
     println!("{signature_json}");
 
     let signature: Signature<MyData, MyComment> = serde_json::from_str(&signature_json).unwrap();
-    let message = signature.verify(sec.secret_key.public());
+
+    let comment = signature.comment();
+    println!("comment on signature {:?}", comment);
+
+    let sig = signature.signature().expect("failed to parse signature");
+    println!("signing key used {:?}", sig.signer_keynum());
+
+    let public_key = PublicKey::from(sec);
+    println!("pub key keynum {:?}", public_key.keynum());
+
+    let message = signature.verify(&public_key).expect("failed to verify signature with public key");
     let message_json = serde_json::to_string(&message).unwrap();
     println!("{message_json}");
 }
