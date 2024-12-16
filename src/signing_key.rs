@@ -1,6 +1,7 @@
 use crate::Metadata;
 
 #[derive(serde::Serialize, serde::Deserialize)]
+// TODO: type erasure of <C> when deserializing?
 pub struct SigningKey<C> {
     #[serde(with = "signing_key_serde")]
     pub(crate) secret_key: libsignify::PrivateKey,
@@ -41,6 +42,7 @@ mod signing_key_serde {
 }
 
 impl<C> SigningKey<C> {
+    // TODO: hide behind feature
     pub fn generate() -> Self {
         let mut rng = rand_core::OsRng {};
         let secret_key =
@@ -53,21 +55,14 @@ impl<C> SigningKey<C> {
         }
     }
 
-    pub fn with_comment(self, comment: C) -> Self {
-        Self {
-            metadata: self.metadata.with_comment(comment),
-            secret_key: self.secret_key,
-        }
+    pub fn with_comment(mut self, comment: C) -> Self {
+        self.metadata = self.metadata.with_comment(comment);
+        self
     }
 
-    pub fn set_expiration(self, timestamp: jiff::Timestamp) -> Self {
-        Self {
-            metadata: Metadata {
-                expired_at: Some(timestamp),
-                ..Default::default()
-            },
-            secret_key: self.secret_key,
-        }
+    pub fn set_expiration(mut self, timestamp: jiff::Timestamp) -> Self {
+        self.metadata = self.metadata.with_expiration(timestamp);
+        self
     }
 
     pub fn sign(&self, msg: &[u8]) -> libsignify::Signature {

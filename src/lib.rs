@@ -3,8 +3,8 @@ mod signature;
 mod signing_key;
 
 pub use public_key::PublicKey;
-pub use signature::{Message, Signature};
 pub use signature::builder::SignatureBuilder;
+pub use signature::{Message, Signature};
 pub use signing_key::SigningKey;
 
 pub mod error {
@@ -34,10 +34,13 @@ impl<T> Default for Metadata<T> {
 }
 
 impl<T> Metadata<T> {
-    pub fn with_comment(self, comment: T) -> Self {
-        Self {
-            comment: Some(comment),
-            ..self
-        }
+    pub fn with_comment(mut self, comment: T) -> Self {
+        self.comment = Some(comment);
+        self
+    }
+
+    pub fn with_expiration(mut self, timestamp: Timestamp) -> Self {
+        self.expired_at = Some(timestamp);
+        self
     }
 }

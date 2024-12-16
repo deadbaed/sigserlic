@@ -19,7 +19,7 @@ pub struct Signature<T, C> {
     signed_artifact: Message<T>,
     /// Base64 signature
     signature: String,
-    /// Metadata
+    /// Untrusted comment
     #[serde(skip_serializing_if = "Option::is_none")]
     comment: Option<C>,
 }
