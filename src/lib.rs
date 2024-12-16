@@ -16,9 +16,12 @@ use jiff::Timestamp;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Metadata<T> {
+    #[serde(with = "jiff::fmt::serde::timestamp::second::required")]
     created_at: Timestamp,
-    #[serde(skip_serializing_if = "Option::is_none")]
+
+    #[serde(with = "jiff::fmt::serde::timestamp::second::optional")]
     expired_at: Option<Timestamp>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     comment: Option<T>,
 }

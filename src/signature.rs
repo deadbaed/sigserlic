@@ -8,8 +8,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Message<T> {
     data: T,
+
+    #[serde(with = "jiff::fmt::serde::timestamp::second::required")]
     timestamp: Timestamp,
-    #[serde(skip_serializing_if = "Option::is_none")]
+
+    #[serde(with = "jiff::fmt::serde::timestamp::second::optional")]
     expiration: Option<Timestamp>,
 }
 
