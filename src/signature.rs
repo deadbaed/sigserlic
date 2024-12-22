@@ -10,10 +10,10 @@ use snafu::{ResultExt, Snafu};
 pub struct Message<T> {
     data: T,
 
-    #[serde(with = "jiff::fmt::serde::timestamp::second::required")]
+    #[serde(with = "crate::timestamp::required")]
     timestamp: Timestamp,
 
-    #[serde(with = "jiff::fmt::serde::timestamp::second::optional")]
+    #[serde(with = "crate::timestamp::optional")]
     expiration: Option<Timestamp>,
 }
 

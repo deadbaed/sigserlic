@@ -1,6 +1,7 @@
 mod public_key;
 mod signature;
 mod signing_key;
+mod timestamp;
 
 pub use public_key::PublicKey;
 pub use signature::builder::SignatureBuilder;
@@ -25,10 +26,10 @@ pub struct TimestampError {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Metadata<T> {
-    #[serde(with = "jiff::fmt::serde::timestamp::second::required")]
+    #[serde(with = "timestamp::required")]
     created_at: Timestamp,
 
-    #[serde(with = "jiff::fmt::serde::timestamp::second::optional")]
+    #[serde(with = "timestamp::optional")]
     expired_at: Option<Timestamp>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
