@@ -30,7 +30,7 @@ fn main() {
             age: 24,
             bytes: vec![1, 2, 3, 4, 5],
         })
-        .set_expiration(expiration.timestamp());
+        .set_expiration(expiration.timestamp().as_second()).unwrap();
     println!("generated key {:?}", gen);
 
     // cbor
@@ -69,7 +69,7 @@ fn main() {
     })
     // let to_sign = SignatureBuilder::new(String::from("toto mange du gateau"))
     // let to_sign: SignatureBuilder<_, ()> = SignatureBuilder::new(123)
-    .timestamp(jiff::Timestamp::now())
+    .timestamp(jiff::Timestamp::now().as_second()).unwrap()
     // .expiration(expiration.timestamp())
         // .comment(456);
         // .comment("coucou");

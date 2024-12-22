@@ -1,7 +1,7 @@
-use crate::{Message, Signature, SigningKey};
+use crate::{Message, Signature, SigningKey, TimestampError, TimestampSnafu};
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 
 pub struct SignatureBuilder<M: Serialize, C> {
     message: M,
@@ -36,15 +36,17 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
     }
 
     /// This timestamp **will be** signed with the message.
-    pub fn timestamp(mut self, timestamp: Timestamp) -> Self {
+    pub fn timestamp(mut self, timestamp: i64) -> Result<Self, TimestampError> {
+        let timestamp = Timestamp::from_second(timestamp).context(TimestampSnafu { timestamp })?;
         self.timestamp = Some(timestamp);
-        self
+        Ok(self)
     }
 
     /// If set, this timestamp **will be** signed with the message.
-    pub fn expiration(mut self, timestamp: Timestamp) -> Self {
+    pub fn expiration(mut self, timestamp: i64) -> Result<Self, TimestampError> {
+        let timestamp = Timestamp::from_second(timestamp).context(TimestampSnafu { timestamp })?;
         self.expires_at = Some(timestamp);
-        self
+        Ok(self)
     }
 
     /// The comment is not signed

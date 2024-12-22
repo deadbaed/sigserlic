@@ -60,9 +60,9 @@ impl<C> SigningKey<C> {
         self
     }
 
-    pub fn set_expiration(mut self, timestamp: jiff::Timestamp) -> Self {
-        self.metadata = self.metadata.with_expiration(timestamp);
-        self
+    pub fn set_expiration(mut self, timestamp: i64) -> Result<Self, crate::TimestampError> {
+        self.metadata = self.metadata.with_expiration(timestamp)?;
+        Ok(self)
     }
 }
 

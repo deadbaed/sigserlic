@@ -7,12 +7,21 @@ pub use signature::builder::SignatureBuilder;
 pub use signature::{Message, Signature};
 pub use signing_key::SigningKey;
 
+use snafu::{ResultExt, Snafu};
+
 pub mod error {
     pub use crate::signature::builder::SignatureBuilderError;
     pub use crate::signature::SignatureError;
 }
 
 use jiff::Timestamp;
+
+#[derive(Debug, Snafu)]
+#[snafu(display("Failed to parse timestamp {timestamp}"))]
+pub struct TimestampError {
+    timestamp: i64,
+    source: jiff::Error,
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Metadata<T> {
@@ -42,8 +51,9 @@ impl<T> Metadata<T> {
         self
     }
 
-    pub fn with_expiration(mut self, timestamp: Timestamp) -> Self {
+    pub fn with_expiration(mut self, timestamp: i64) -> Result<Self, TimestampError> {
+        let timestamp = Timestamp::from_second(timestamp).context(TimestampSnafu { timestamp })?;
         self.expired_at = Some(timestamp);
-        self
+        Ok(self)
     }
 }

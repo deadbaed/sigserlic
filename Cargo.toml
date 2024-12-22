@@ -23,6 +23,5 @@ bson = "2"
 rmp-serde = "1"
 
 [features]
-
 default = ["generate"]
 generate = ["dep:rand_core"]
