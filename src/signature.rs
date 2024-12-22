@@ -4,6 +4,7 @@ use crate::PublicKey;
 use base64ct::Encoding;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Message<T> {
@@ -27,16 +28,16 @@ pub struct Signature<T, C> {
     comment: Option<C>,
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum SignatureError {
-    #[error("decoding signature")]
-    Signature(libsignify::Error),
-    #[error("decoding base64: {0}")]
-    Base64(#[from] base64ct::Error),
-    #[error("encoding message in binary format")]
+    #[snafu(display("decoding signature"))]
+    Signature { source: libsignify::Error },
+    #[snafu(display("decoding base64"))]
+    Base64 { source: base64ct::Error },
+    #[snafu(display("encoding message in binary format"))]
     Bincode,
-    #[error("verify signature with public key")]
-    Verify(libsignify::Error),
+    #[snafu(display("verify signature with public key"))]
+    Verify { source: libsignify::Error },
 }
 
 impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
@@ -52,7 +53,7 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
 
         public_key
             .verify(&message_bytes, &signature)
-            .map_err(SignatureError::Verify)?;
+            .context(VerifySnafu)?;
 
         Ok(self.signed_artifact)
     }
@@ -60,8 +61,8 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
     pub fn signature(&self) -> Result<libsignify::Signature, SignatureError> {
         use libsignify::Codeable;
 
-        let bytes = base64ct::Base64::decode_vec(&self.signature)?;
-        libsignify::Signature::from_bytes(&bytes).map_err(SignatureError::Verify)
+        let bytes = base64ct::Base64::decode_vec(&self.signature).context(Base64Snafu)?;
+        libsignify::Signature::from_bytes(&bytes).context(SignatureSnafu)
     }
 
     pub fn comment(&self) -> Option<&C> {

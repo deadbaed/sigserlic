@@ -1,6 +1,7 @@
 use crate::{Message, Signature, SigningKey};
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
+use snafu::Snafu;
 
 pub struct SignatureBuilder<M: Serialize, C> {
     message: M,
@@ -13,11 +14,14 @@ pub struct SignatureBuilder<M: Serialize, C> {
     comment: Option<C>,
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum SignatureBuilderError {
-    #[error("expiration is before timestamp")]
-    PastExpiration,
-    #[error("encoding message in binary format")]
+    #[snafu(display("expiration {expiration} is before timestamp {timestamp}"))]
+    PastExpiration {
+        expiration: Timestamp,
+        timestamp: Timestamp,
+    },
+    #[snafu(display("encoding message in binary format"))]
     Bincode,
 }
 
@@ -58,9 +62,12 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
 
         let timestamp = self.timestamp.unwrap_or(Timestamp::now());
         if let Some(expiration) = self.expires_at {
-            (timestamp <= expiration)
-                .then_some(())
-                .ok_or(SignatureBuilderError::PastExpiration)?;
+            (timestamp <= expiration).then_some(()).ok_or(
+                SignatureBuilderError::PastExpiration {
+                    expiration,
+                    timestamp,
+                },
+            )?;
         }
 
         // Encode message in bytes
