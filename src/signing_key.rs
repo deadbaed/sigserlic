@@ -41,8 +41,8 @@ mod signing_key_serde {
     }
 }
 
+#[cfg(feature = "generate")]
 impl<C> SigningKey<C> {
-    // TODO: hide behind feature
     pub fn generate() -> Self {
         let mut rng = rand_core::OsRng {};
         let secret_key =
@@ -64,7 +64,9 @@ impl<C> SigningKey<C> {
         self.metadata = self.metadata.with_expiration(timestamp);
         self
     }
+}
 
+impl<C> SigningKey<C> {
     pub fn sign(&self, msg: &[u8]) -> libsignify::Signature {
         self.secret_key.sign(msg)
     }
