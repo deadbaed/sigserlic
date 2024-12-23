@@ -65,12 +65,6 @@ impl<C> SigningKey<C> {
     }
 }
 
-impl<C> SigningKey<C> {
-    pub fn sign(&self, msg: &[u8]) -> libsignify::Signature {
-        self.secret_key.sign(msg)
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -91,8 +85,8 @@ mod tests {
             // Import key
             let imported_key: NoCommentSK = serde_json::from_str(&json).unwrap();
             assert_eq!(
-                generated_key.secret_key.public().keynum(),
-                imported_key.secret_key.public().keynum()
+                crate::PublicKey::from(generated_key).keynum(),
+                crate::PublicKey::from(imported_key).keynum(),
             );
         }
 
@@ -210,13 +204,15 @@ mod tests {
 
         mod no_comment_no_expiration {
             use super::super::super::*;
+
             #[test]
             fn json() {
                 let json = r#"{"secret_key":"4564424b00000000fb39dd26b3daa32bba433e2d7ed3ba61906dccfb6bbfb4ff97ae37ea877e588cdb275863f814f5e2639d808bdf56dc0d142abb7ae6267d6d88489c0671eb70f8768a41d8a506a0b2d02d9b43332495785a30f19a7fd17f78eb9423ce8bc8b026","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
-                let key: SigningKey<String> = serde_json::from_str(json).unwrap();
+                let key: SigningKey<()> = serde_json::from_str(json).unwrap();
                 assert!(key.metadata.comment.is_none());
                 assert!(key.metadata.expired_at.is_none());
             }
+
             #[test]
             fn cbor() {
                 let cbor: [u8; 274] = [
@@ -310,6 +306,7 @@ mod tests {
                     Some(1750000000)
                 );
             }
+
             #[test]
             fn cbor() {
                 let cbor: [u8; 329] = [

@@ -49,7 +49,7 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
         Ok(self)
     }
 
-    /// The comment is not signed
+    /// The comment is not signed -> openbsd signify "untrusted comment"
     pub fn comment(mut self, comment: C) -> Self {
         self.comment = Some(comment);
         self
@@ -82,7 +82,7 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
             .map_err(|_| SignatureBuilderError::Bincode)?;
 
         // Sign the message with secret key, and encode to a base64 string
-        let signature = signing_key.sign(&message_bytes);
+        let signature = signing_key.secret_key.sign(&message_bytes);
         let bytes = signature.as_bytes();
         let signature = base64ct::Base64::encode_string(&bytes);
 
