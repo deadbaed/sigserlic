@@ -10,6 +10,8 @@ pub use signing_key::SigningKey;
 
 use snafu::{ResultExt, Snafu};
 
+const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
+
 pub mod error {
     pub use crate::signature::builder::SignatureBuilderError;
     pub use crate::signature::SignatureError;

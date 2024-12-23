@@ -48,7 +48,7 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
         let signature = self.signature()?;
 
         let message_bytes =
-            bincode::serde::encode_to_vec(&self.signed_artifact, bincode::config::standard())
+            bincode::serde::encode_to_vec(&self.signed_artifact, crate::BINCODE_CONFIG)
                 .map_err(|_| SignatureError::Bincode)?;
 
         public_key

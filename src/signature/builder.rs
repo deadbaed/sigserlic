@@ -78,7 +78,7 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
             timestamp,
             expiration: self.expires_at,
         };
-        let message_bytes = bincode::serde::encode_to_vec(&message, bincode::config::standard())
+        let message_bytes = bincode::serde::encode_to_vec(&message, crate::BINCODE_CONFIG)
             .map_err(|_| SignatureBuilderError::Bincode)?;
 
         // Sign the message with secret key, and encode to a base64 string
