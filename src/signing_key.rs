@@ -1,3 +1,4 @@
+use crate::error::TimestampError;
 use crate::Metadata;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -59,7 +60,7 @@ impl<C> SigningKey<C> {
         self
     }
 
-    pub fn with_expiration(mut self, timestamp: i64) -> Result<Self, crate::TimestampError> {
+    pub fn with_expiration(mut self, timestamp: i64) -> Result<Self, TimestampError> {
         self.metadata = self.metadata.with_expiration(timestamp)?;
         Ok(self)
     }

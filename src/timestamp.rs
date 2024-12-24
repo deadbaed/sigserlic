@@ -1,5 +1,6 @@
 use jiff::Timestamp;
 use serde::{Deserialize, Deserializer, Serializer};
+use snafu::{ResultExt, Snafu};
 use std::str::FromStr;
 
 pub(crate) mod required {
@@ -48,4 +49,15 @@ pub(crate) mod optional {
 
         Ok(timestamp)
     }
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(display("Failed to parse timestamp {timestamp}"))]
+pub struct TimestampError {
+    timestamp: i64,
+    source: jiff::Error,
+}
+
+pub(crate) fn parse_timestamp(timestamp: i64) -> Result<Timestamp, TimestampError> {
+    Timestamp::from_second(timestamp).context(TimestampSnafu { timestamp })
 }

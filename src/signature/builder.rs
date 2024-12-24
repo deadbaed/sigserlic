@@ -1,7 +1,8 @@
-use crate::{Message, Signature, SigningKey, TimestampError, TimestampSnafu};
+use crate::error::TimestampError;
+use crate::{Message, Signature, SigningKey};
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
-use snafu::{ResultExt, Snafu};
+use snafu::Snafu;
 
 pub struct SignatureBuilder<M: Serialize, C> {
     message: M,
@@ -37,14 +38,14 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
 
     /// This timestamp **will be** signed with the message.
     pub fn timestamp(mut self, timestamp: i64) -> Result<Self, TimestampError> {
-        let timestamp = Timestamp::from_second(timestamp).context(TimestampSnafu { timestamp })?;
+        let timestamp = crate::timestamp::parse_timestamp(timestamp)?;
         self.timestamp = Some(timestamp);
         Ok(self)
     }
 
     /// If set, this timestamp **will be** signed with the message.
     pub fn expiration(mut self, timestamp: i64) -> Result<Self, TimestampError> {
-        let timestamp = Timestamp::from_second(timestamp).context(TimestampSnafu { timestamp })?;
+        let timestamp = crate::timestamp::parse_timestamp(timestamp)?;
         self.expires_at = Some(timestamp);
         Ok(self)
     }
