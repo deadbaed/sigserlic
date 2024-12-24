@@ -10,15 +10,15 @@ pub(crate) mod required {
     where
         S: Serializer,
     {
-        let str = timestamp.to_string();
-        serializer.serialize_str(&str)
+        serializer.collect_str(timestamp)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Timestamp, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let string: String = Deserialize::deserialize(deserializer)?;
+        // Make sure value is an owned string, some serde implementations will fail on a slice (ex: `ciborium`)
+        let string = String::deserialize(deserializer)?;
         Timestamp::from_str(&string).map_err(serde::de::Error::custom)
     }
 }
@@ -40,11 +40,12 @@ pub(crate) mod optional {
     where
         D: Deserializer<'de>,
     {
-        let value = Option::deserialize(deserializer)?;
+        // Make sure value is an owned string, some serde implementations will fail on a slice (ex: `ciborium`)
+        let string = Option::<String>::deserialize(deserializer)?;
 
         // If there is a value, attempt to parse it in a timestamp, return error if parsing fails
-        let timestamp = value
-            .map(|v| Timestamp::from_str(v).map_err(serde::de::Error::custom))
+        let timestamp = string
+            .map(|string| Timestamp::from_str(&string).map_err(serde::de::Error::custom))
             .transpose()?;
 
         Ok(timestamp)
