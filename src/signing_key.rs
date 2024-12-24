@@ -75,6 +75,13 @@ impl<C> SigningKey<C> {
         self.secret_key.public().keynum()
     }
 
+    pub fn sign<'de, Message: serde::Serialize + serde::Deserialize<'de>, MessageComment>(
+        &self,
+        signature_builder: crate::SignatureBuilder<Message, MessageComment>,
+    ) -> Result<crate::Signature<Message, MessageComment>, crate::error::SignatureBuilderError>
+    {
+        signature_builder.sign(self)
+    }
 }
 
 #[cfg(test)]
