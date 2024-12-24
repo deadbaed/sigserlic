@@ -65,12 +65,12 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
 
         let timestamp = self.timestamp.unwrap_or(Timestamp::now());
         if let Some(expiration) = self.expires_at {
-            (timestamp <= expiration).then_some(()).ok_or(
-                SignatureBuilderError::PastExpiration {
+            if expiration <= timestamp {
+                return Err(SignatureBuilderError::PastExpiration {
                     expiration,
                     timestamp,
-                },
-            )?;
+                });
+            }
         }
 
         // Encode message in bytes
