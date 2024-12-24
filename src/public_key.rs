@@ -40,6 +40,10 @@ impl<C> From<SigningKey<C>> for PublicKey<C> {
 }
 
 impl<C> PublicKey<C> {
+    pub fn created_at(&self) -> i64 {
+        self.metadata.created_at.as_second()
+    }
+
     pub fn keynum(&self) -> libsignify::KeyNumber {
         self.public_key.keynum()
     }

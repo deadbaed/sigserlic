@@ -66,6 +66,17 @@ impl<C> SigningKey<C> {
     }
 }
 
+impl<C> SigningKey<C> {
+    pub fn created_at(&self) -> i64 {
+        self.metadata.created_at.as_second()
+    }
+
+    pub fn keynum(&self) -> libsignify::KeyNumber {
+        self.secret_key.public().keynum()
+    }
+
+}
+
 #[cfg(test)]
 mod tests {
 

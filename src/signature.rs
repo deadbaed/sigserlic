@@ -17,6 +17,20 @@ pub struct Message<T> {
     expiration: Option<Timestamp>,
 }
 
+impl<T> Message<T> {
+    pub fn data(&self) -> &T {
+        &self.data
+    }
+
+    pub fn timestamp(&self) -> Timestamp {
+        self.timestamp
+    }
+
+    pub fn expiration(&self) -> Option<Timestamp> {
+        self.expiration
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Signature<T, C> {
     /// The signed artifact
