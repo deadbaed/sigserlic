@@ -68,9 +68,19 @@ impl<C> SigningKey<C> {
 #[cfg(test)]
 mod tests {
 
+    use super::*;
+
+    #[test]
+    fn debug_fmt_do_not_leak_secret_key() {
+        let json = r#"{"secret_key":"4564424b00000000fb39dd26b3daa32bba433e2d7ed3ba61906dccfb6bbfb4ff97ae37ea877e588cdb275863f814f5e2639d808bdf56dc0d142abb7ae6267d6d88489c0671eb70f8768a41d8a506a0b2d02d9b43332495785a30f19a7fd17f78eb9423ce8bc8b026","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
+        let key: SigningKey<()> = serde_json::from_str(json).unwrap();
+
+        assert!(format!("{key:?}").contains("<secret>"));
+    }
+
     #[cfg(feature = "generate")]
     mod generate {
-        use super::super::*;
+        use super::*;
 
         #[test]
         fn without_comment() {
