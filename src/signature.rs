@@ -71,7 +71,6 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
 
