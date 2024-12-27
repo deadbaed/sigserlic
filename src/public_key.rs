@@ -1,4 +1,4 @@
-use crate::{Metadata, SigningKey};
+use crate::{KeyMetadata, Metadata, SigningKey};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct PublicKey<C> {
@@ -40,20 +40,34 @@ impl<C> From<SigningKey<C>> for PublicKey<C> {
 }
 
 impl<C> PublicKey<C> {
-    pub fn created_at(&self) -> i64 {
-        self.metadata.created_at.as_second()
-    }
-
-    pub fn keynum(&self) -> libsignify::KeyNumber {
-        self.public_key.keynum()
-    }
-
     pub fn verify(
         &self,
         msg: &[u8],
         signature: &libsignify::Signature,
     ) -> Result<(), libsignify::Error> {
         self.public_key.verify(msg, signature)
+    }
+}
+
+impl<C> KeyMetadata<C> for PublicKey<C> {
+    fn created_at(&self) -> i64 {
+        self.metadata.created_at.as_second()
+    }
+
+    fn expired_at(&self) -> Option<i64> {
+        self.metadata.expired_at.map(|e| e.as_second())
+    }
+
+    fn keynum(&self) -> libsignify::KeyNumber {
+        self.public_key.keynum()
+    }
+
+    fn comment(&self) -> Option<&C> {
+        self.metadata.comment.as_ref()
+    }
+
+    fn usage(&self) -> crate::KeyUsage {
+        crate::KeyUsage::Verifying
     }
 }
 

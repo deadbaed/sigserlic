@@ -1,9 +1,11 @@
+mod key;
 mod metadata;
 mod public_key;
 mod signature;
 mod signing_key;
 mod timestamp;
 
+pub use key::{KeyMetadata, KeyUsage};
 pub(crate) use metadata::Metadata;
 pub use public_key::PublicKey;
 pub use signature::builder::SignatureBuilder;

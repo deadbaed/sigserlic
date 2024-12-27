@@ -87,6 +87,7 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::KeyMetadata;
 
     const PUBLIC_KEY_JSON: &str = r#"{"public_key":"456497ae37ea877e588c768a41d8a506a0b2d02d9b43332495785a30f19a7fd17f78eb9423ce8bc8b026","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
     const PUBLIC_KEY2_JSON: &str = r#"{"public_key":"456427254b836a259fd8101e9abb36221085a8e216e88be8b73e89a5202ae1c879e560bfaf3fdfab4998","created_at":"2024-12-23T16:39:25.85933Z","expired_at":null}"#;

@@ -1,4 +1,5 @@
 use crate::error::TimestampError;
+use crate::KeyMetadata;
 use crate::Metadata;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -67,20 +68,34 @@ impl<C> SigningKey<C> {
 }
 
 impl<C> SigningKey<C> {
-    pub fn created_at(&self) -> i64 {
-        self.metadata.created_at.as_second()
-    }
-
-    pub fn keynum(&self) -> libsignify::KeyNumber {
-        self.secret_key.public().keynum()
-    }
-
     pub fn sign<'de, Message: serde::Serialize + serde::Deserialize<'de>, MessageComment>(
         &self,
         signature_builder: crate::SignatureBuilder<Message, MessageComment>,
     ) -> Result<crate::Signature<Message, MessageComment>, crate::error::SignatureBuilderError>
     {
         signature_builder.sign(self)
+    }
+}
+
+impl<C> KeyMetadata<C> for SigningKey<C> {
+    fn created_at(&self) -> i64 {
+        self.metadata.created_at.as_second()
+    }
+
+    fn expired_at(&self) -> Option<i64> {
+        self.metadata.expired_at.map(|e| e.as_second())
+    }
+
+    fn keynum(&self) -> libsignify::KeyNumber {
+        self.secret_key.public().keynum()
+    }
+
+    fn comment(&self) -> Option<&C> {
+        self.metadata.comment.as_ref()
+    }
+
+    fn usage(&self) -> crate::KeyUsage {
+        crate::KeyUsage::Signing
     }
 }
 
