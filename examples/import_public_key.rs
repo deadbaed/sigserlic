@@ -10,7 +10,7 @@
 //! $ cargo run --example from_signing_key_to_public_key | cargo run --example import_public_key
 //! ```
 
-use signify_serde::PublicKey;
+use sigserlic::PublicKey;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Read json from stdin

@@ -4,7 +4,7 @@
 //! $ cargo run --example from_signing_key_to_public_key
 //! ```
 
-use signify_serde::{PublicKey, SigningKey};
+use sigserlic::{PublicKey, SigningKey};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Let's say we have an existing signing key somewhere

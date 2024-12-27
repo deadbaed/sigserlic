@@ -4,7 +4,7 @@
 //! $ cargo run --example generate_key_json --features="generate" -- "testing key"
 //! ```
 
-use signify_serde::SigningKey;
+use sigserlic::SigningKey;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate signing key

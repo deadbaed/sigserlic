@@ -4,7 +4,7 @@
 //! $ cargo run --example sign_message
 //! ```
 
-use signify_serde::{SignatureBuilder, SigningKey};
+use sigserlic::{SignatureBuilder, SigningKey};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Import signing key

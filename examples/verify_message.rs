@@ -4,7 +4,7 @@
 //! $ cargo run --example verify_message
 //! ```
 
-use signify_serde::{PublicKey, Signature};
+use sigserlic::{PublicKey, Signature};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Receive a signature, compare
