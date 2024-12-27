@@ -7,7 +7,7 @@
 //! This example will read a private key in json on stdin.
 //! If you do not have one, generate one and pipe to this example:
 //! ```console
-//! $ cargo run --example generate_key_json --features="generate" | cargo run --example import_signing_key
+//! $ cargo run --example generate_key_json --features="generate" "testing signing keys" | cargo run --example import_signing_key
 //! ```
 
 use signify_serde::SigningKey;
@@ -17,9 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut json = String::new();
     std::io::stdin().read_line(&mut json)?;
 
-    // NOTE: The type of the comment must be the same as the input
+    // NOTE: The type of the comment must be the same or compatible with the input type
     // Deserialization will fail otherwise
-    let signing_key: SigningKey<()> =
+    let signing_key: SigningKey<serde_json::Value> =
         serde_json::from_str(&json).expect("Deserialize SigningKey from json");
 
     // Get timestamp when key was created.

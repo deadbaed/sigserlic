@@ -17,9 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut json = String::new();
     std::io::stdin().read_line(&mut json)?;
 
-    // NOTE: The type of the comment must be the same as the input
+    // NOTE: The type of the comment must be the same or compatible with the input type
     // Deserialization will fail otherwise
-    let public_key: PublicKey<&str> =
+    let public_key: PublicKey<serde_json::Value> =
         serde_json::from_str(&json).expect("Deserialize PublicKey from json");
 
     // Get timestamp when key was created.
@@ -34,5 +34,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Display key information
     println!("Key `{keynum}` was created on {timestamp}");
+
     Ok(())
 }
