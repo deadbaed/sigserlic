@@ -2,6 +2,14 @@
 name = "sigserlic"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/deadbaed/sigserlic"
+description = "Combine serde with signify"
+keywords = ["signify", "serde", "license"]
+
+[features]
+default = ["generate"]
+generate = ["dep:rand_core"]
 
 [dependencies]
 # core
@@ -10,7 +18,7 @@ serde = { version = "1", features = ["derive"] }
 jiff = "0.1"
 snafu = "0.8"
 
-# serse helpers
+# serde helpers
 base64ct = { version = "1", features = ["std"] }
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
 hex = "0.4.3"
@@ -22,6 +30,7 @@ rand_core = { version = "0.6.4", optional = true, features = ["std"] }
 serde_json = "1"
 ciborium = "0.2"
 
-[features]
-default = ["generate"]
-generate = ["dep:rand_core"]
+[package.metadata.docs.rs]
+all-features = true
+# enable unstable features in the documentation https://stackoverflow.com/a/61417700/4809297
+rustdoc-args = ["--cfg", "docsrs"]
