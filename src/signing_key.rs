@@ -3,6 +3,8 @@ use crate::KeyMetadata;
 use crate::Metadata;
 
 #[derive(serde::Serialize, serde::Deserialize)]
+/// A key with the capability of signing data, producing a [`Signature`](crate::Signature), which can be
+/// verified by a [`PublicKey`](crate::PublicKey).
 pub struct SigningKey<C> {
     #[serde(with = "signing_key_serde")]
     pub(crate) secret_key: libsignify::PrivateKey,
@@ -44,6 +46,15 @@ mod signing_key_serde {
 
 #[cfg(feature = "generate")]
 impl<C> SigningKey<C> {
+    /// Generate a new signing key
+    ///
+    /// ```
+    /// # use sigserlic::KeyMetadata;
+    /// type Comment = (); // No comment for this key
+    /// type MyKey = sigserlic::SigningKey::<Comment>;
+    ///
+    /// let signing_key = MyKey::generate();
+    /// ```
     pub fn generate() -> Self {
         let mut rng = rand_core::OsRng {};
         let secret_key =
@@ -56,18 +67,64 @@ impl<C> SigningKey<C> {
         }
     }
 
+    /// Set comment to the key, where the type must implement [`Debug`], [`serde::Serialize`], [`serde::Deserialize`]
+    ///
+    /// ```
+    /// # use sigserlic::KeyMetadata;
+    /// #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    /// struct MyComment {
+    ///     name: String,
+    ///     data: Vec<u8>,
+    ///     age: u8,
+    ///     awesome: bool,
+    /// }
+    /// type MyKey = sigserlic::SigningKey::<MyComment>;
+    ///
+    /// let signing_key = MyKey::generate().with_comment(MyComment {
+    ///    name: "Phil".into(),
+    ///    data: vec![0xde, 0xad, 0xba, 0xed],
+    ///    age: 42,
+    ///    awesome: true,
+    /// });
+    /// assert!(signing_key.comment().is_some_and(|c| c.awesome == true));
+    /// ```
     pub fn with_comment(mut self, comment: C) -> Self {
         self.metadata = self.metadata.with_comment(comment);
         self
     }
 
+    /// Declare when the key is supposed to expire
+    ///
+    /// ```
+    /// # use sigserlic::KeyMetadata;
+    /// # use jiff::ToSpan;
+    /// # let now = jiff::Timestamp::now();
+    /// #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    /// struct MyComment {
+    ///     name: String,
+    ///     data: Vec<u8>,
+    ///     age: u8,
+    ///     awesome: bool,
+    /// }
+    /// type MyKey = sigserlic::SigningKey::<()>;
+    /// let signing_key = MyKey::generate();
+    ///
+    /// # let expiration = (now + 2.hours()).as_second();
+    /// let signing_key = signing_key.with_expiration(expiration).unwrap();
+    /// assert!(signing_key.expired_at().is_some_and(|e| e > signing_key.created_at()));
+    /// ```
     pub fn with_expiration(mut self, timestamp: i64) -> Result<Self, TimestampError> {
+        // TODO: return error if timestamp is before generation timestamp
         self.metadata = self.metadata.with_expiration(timestamp)?;
         Ok(self)
     }
 }
 
 impl<C> SigningKey<C> {
+    /// Consume a [`SignatureBuilder`](crate::SignatureBuilder) to produce a
+    /// [`Signature`](crate::Signature)
+    ///
+    /// See [`SignatureBuilder::sign()`](crate::SignatureBuilder::sign()) for an example.
     pub fn sign<'de, Message: serde::Serialize + serde::Deserialize<'de>, MessageComment>(
         &self,
         signature_builder: crate::SignatureBuilder<Message, MessageComment>,

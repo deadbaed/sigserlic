@@ -54,6 +54,7 @@ pub(crate) mod optional {
 
 #[derive(Debug, Snafu)]
 #[snafu(display("Failed to parse timestamp {timestamp}"))]
+/// Error while parsing a timestamp from an integer
 pub struct TimestampError {
     timestamp: i64,
     source: jiff::Error,

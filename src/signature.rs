@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+/// Content signed by a [`SigningKey`](crate::SigningKey)
 pub struct Message<T> {
     data: T,
 
@@ -18,20 +19,24 @@ pub struct Message<T> {
 }
 
 impl<T> Message<T> {
+    /// The actual data signed
     pub fn data(&self) -> &T {
         &self.data
     }
 
+    /// Timestamp when signature got signed
     pub fn timestamp(&self) -> Timestamp {
         self.timestamp
     }
 
+    /// Timestamp when signature should expired, if set
     pub fn expiration(&self) -> Option<Timestamp> {
         self.expiration
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Content produced by [`SignatureBuilder`](crate::SignatureBuilder), signed by a [`SigningKey`](crate::SigningKey)
 pub struct Signature<T, C> {
     /// The signed artifact
     signed_artifact: Message<T>,
@@ -43,18 +48,33 @@ pub struct Signature<T, C> {
 }
 
 #[derive(Debug, PartialEq, Eq, Snafu)]
+/// Errors when manipulting a [`Signature`]
 pub enum SignatureError {
     #[snafu(display("decoding signature"))]
-    Signature { source: libsignify::Error },
+    /// Failed to parse bytes of signature
+    Signature {
+        /// Original error
+        source: libsignify::Error,
+    },
     #[snafu(display("decoding base64"))]
-    Base64 { source: base64ct::Error },
+    /// Failed to decode base64 encoded signature
+    Base64 {
+        /// Original error
+        source: base64ct::Error,
+    },
     #[snafu(display("encoding message in binary format"))]
+    /// Failed to decode message with [`Bincode`](bincode)
     Bincode,
     #[snafu(display("verify signature with public key"))]
-    Verify { source: libsignify::Error },
+    /// Failed to use key to verify authenticity of message
+    Verify {
+        /// Original error
+        source: libsignify::Error,
+    },
 }
 
 impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
+    /// Decode signature and signed data, verify authenticity of signature with [`PublicKey`]
     pub fn verify<CPubKey>(
         self,
         public_key: &PublicKey<CPubKey>,
@@ -72,6 +92,7 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
         Ok(self.signed_artifact)
     }
 
+    /// Decode signature encoded in base64
     pub fn signature(&self) -> Result<libsignify::Signature, SignatureError> {
         use libsignify::Codeable;
 
@@ -79,6 +100,7 @@ impl<'de, T: Serialize + Deserialize<'de>, C> Signature<T, C> {
         libsignify::Signature::from_bytes(&bytes).context(SignatureSnafu)
     }
 
+    /// Get the untrusted comment attached to the signature, if set
     pub fn comment(&self) -> Option<&C> {
         self.comment.as_ref()
     }

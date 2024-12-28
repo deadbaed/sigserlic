@@ -4,6 +4,7 @@ use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 
+/// Temporary structure holding data waiting to be signed
 pub struct SignatureBuilder<M: Serialize, C> {
     message: M,
 
@@ -16,17 +17,32 @@ pub struct SignatureBuilder<M: Serialize, C> {
 }
 
 #[derive(Debug, PartialEq, Eq, Snafu)]
+/// Failures when signing a [`SignatureBuilder`]
 pub enum SignatureBuilderError {
     #[snafu(display("expiration {expiration} is before timestamp {timestamp}"))]
+    /// The expiration timestamp is before the timestamp of when the message is going to be signed
     PastExpiration {
+        /// Timestamp when message is signed
         expiration: Timestamp,
+        /// Timestamp when signature should expire
         timestamp: Timestamp,
     },
     #[snafu(display("encoding message in binary format"))]
+    /// Failed to encode message with [`Bincode`](bincode)
     Bincode,
 }
 
 impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
+    /// Initialization of the builder with data to be signed, where the type must implement [`serde::Serialize`].
+    ///
+    /// ```
+    /// type Data = Vec<u8>;
+    /// type Comment = (); // No comment for this signature
+    /// type MySignatureBuilder = sigserlic::SignatureBuilder::<Data, Comment>;
+    ///
+    /// let data_to_sign: Data = vec![0xde, 0xad, 0xba, 0xed];
+    /// let builder = MySignatureBuilder::new(data_to_sign);
+    /// ```
     pub fn new(message: M) -> Self {
         Self {
             message,
@@ -50,12 +66,28 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
         Ok(self)
     }
 
-    /// The comment is not signed -> openbsd signify "untrusted comment"
+    /// If set, the comment **will not be** signed
+    ///
+    /// See openbsd signify "untrusted comment"
     pub fn comment(mut self, comment: C) -> Self {
         self.comment = Some(comment);
         self
     }
 
+    /// Consume builder to produce a [`Signature`]
+    ///
+    /// ```
+    /// # use sigserlic::Signature;
+    /// # let signing_key = sigserlic::SigningKey::<()>::generate();
+    /// type Data = Vec<u8>;
+    /// type Comment = (); // No comment for this signature
+    /// type MySignatureBuilder = sigserlic::SignatureBuilder::<Data, Comment>;
+    ///
+    /// let data_to_sign: Data = vec![0xde, 0xad, 0xba, 0xed];
+    /// let builder = MySignatureBuilder::new(data_to_sign);
+    ///
+    /// let signature = builder.sign(&signing_key).unwrap();
+    /// ```
     pub fn sign<S>(
         self,
         signing_key: &SigningKey<S>,

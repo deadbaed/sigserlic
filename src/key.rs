@@ -1,4 +1,4 @@
-/// Information available to identify keys
+/// Metadata to identify keys
 pub trait KeyMetadata<C> {
     /// Timestamp when the key was generated
     fn created_at(&self) -> i64;

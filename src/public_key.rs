@@ -1,6 +1,7 @@
 use crate::{KeyMetadata, Metadata, SigningKey};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+/// A key with the capability of verifying a [`Signature`](crate::Signature) emitted by a [`SigningKey`].
 pub struct PublicKey<C> {
     #[serde(with = "public_key_serde")]
     public_key: libsignify::PublicKey,
@@ -40,7 +41,7 @@ impl<C> From<SigningKey<C>> for PublicKey<C> {
 }
 
 impl<C> PublicKey<C> {
-    pub fn verify(
+    pub(crate) fn verify(
         &self,
         msg: &[u8],
         signature: &libsignify::Signature,

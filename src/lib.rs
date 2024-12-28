@@ -1,3 +1,163 @@
+#![warn(missing_docs)]
+
+/*!
+
+The **sig**nify **ser**de **lic**ense system.
+
+Rust library to combine [serde](https://serde.rs) with [libsignify](https://docs.rs/libsignify). Based on [openbsd signify](https://man.openbsd.org/signify).
+
+# Quickstart
+
+## Generate or import a key
+
+```
+use sigserlic::SigningKey;
+
+// Generate
+type Comment = (); // This key will not have a comment
+let key = SigningKey::<Comment>::generate();
+
+// Import an existing key (here encoded in json)
+let json = r#"{
+  "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+  "created_at": "2024-12-24T15:02:48.845298Z",
+  "expired_at": null,
+  "comment": "testing key, do not use"
+}"#;
+let key: SigningKey<String> = serde_json::from_str(json).unwrap();
+```
+
+## Extract public key from signing key
+
+```
+# let json = r#"{
+#   "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+#   "created_at": "2024-12-24T15:02:48.845298Z",
+#   "expired_at": null,
+#   "comment": "testing key, do not use"
+# }"#;
+# let key: sigserlic::SigningKey<String> = serde_json::from_str(json).unwrap();
+use sigserlic::PublicKey;
+let public_key = PublicKey::from(key);
+
+assert_eq!(serde_json::to_string_pretty(&public_key).unwrap(), r#"{
+  "public_key": "45645979bf1c7cf1403a618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+  "created_at": "2024-12-24T15:02:48.845298Z",
+  "expired_at": null,
+  "comment": "testing key, do not use"
+}"#);
+
+```
+
+## Sign data, create a signature
+
+```
+# let json = r#"{
+#   "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+#   "created_at": "2024-12-24T15:02:48.845298Z",
+#   "expired_at": null,
+#   "comment": "testing key, do not use"
+# }"#;
+# let key: sigserlic::SigningKey<String> = serde_json::from_str(json).unwrap();
+#[derive(serde::Serialize, serde::Deserialize)]
+struct MyMessage {
+    string: String,
+    bytes: Vec<u8>,
+    int: i32,
+    boolean: bool,
+}
+let message = MyMessage {
+    string: "Toto mange du gateau".into(),
+    bytes: vec![0xde, 0xad, 0xba, 0xed],
+    int: -1,
+    boolean: true,
+};
+
+type Comment = String;
+let comment: Comment = "anybody can change me :)".into();
+
+// Prepare data to be signed
+type MySignatureBuilder = sigserlic::SignatureBuilder<MyMessage, Comment>;
+let builder = MySignatureBuilder::new(message).comment(comment);
+
+// You can set the timestamp and the expiration if you want
+let builder = builder.timestamp(1735311570).unwrap();
+let builder = builder.expiration(1735397970).unwrap();
+
+// Let's sign our message!
+let signature = key.sign(builder).unwrap();
+assert_eq!(serde_json::to_string_pretty(&signature).unwrap(), r#"{
+  "signed_artifact": {
+    "data": {
+      "string": "Toto mange du gateau",
+      "bytes": [
+        222,
+        173,
+        186,
+        237
+      ],
+      "int": -1,
+      "boolean": true
+    },
+    "timestamp": "2024-12-27T14:59:30Z",
+    "expiration": "2024-12-28T14:59:30Z"
+  },
+  "signature": "RWRZeb8cfPFAOouGiUofEwLJ20MoKD3jG7FpIsNYFMlATrJL/Pdk0Muag+QMa2CLLecQV1Ycho6Ui3QjicTyxTcF68oDAIrnlQo=",
+  "comment": "anybody can change me :)"
+}"#);
+
+```
+
+## Verify data, get original data
+
+```
+// Define what are the used types in this signature
+# #[derive(serde::Serialize, serde::Deserialize)]
+# struct MyMessage {
+#     string: String,
+#     bytes: Vec<u8>,
+#     int: i32,
+#     boolean: bool,
+# }
+# type Comment = String;
+# let json = r#"{
+#   "signed_artifact": {
+#     "data": {
+#       "string": "Toto mange du gateau",
+#       "bytes": [
+#         222,
+#         173,
+#         186,
+#         237
+#       ],
+#       "int": -1,
+#       "boolean": true
+#     },
+#     "timestamp": "2024-12-27T14:59:30Z",
+#     "expiration": "2024-12-28T14:59:30Z"
+#   },
+#   "signature": "RWRZeb8cfPFAOouGiUofEwLJ20MoKD3jG7FpIsNYFMlATrJL/Pdk0Muag+QMa2CLLecQV1Ycho6Ui3QjicTyxTcF68oDAIrnlQo=",
+#   "comment": "anybody can change me :)"
+# }"#;
+type MySignature = sigserlic::Signature<MyMessage, Comment>;
+let signature: MySignature = serde_json::from_str(json).unwrap();
+# let public_key: sigserlic::PublicKey<String> = serde_json::from_str(r#"{
+#   "public_key": "45645979bf1c7cf1403a618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+#   "created_at": "2024-12-24T15:02:48.845298Z",
+#   "expired_at": null,
+#   "comment": "testing key, do not use"
+# }"#).unwrap();
+
+// Let's verify the signature with our public key, and get the signed message!
+let message = signature.verify(&public_key).unwrap();
+
+// Now we can finally get the original data
+let data: &MyMessage = message.data();
+assert_eq!(data.string, "Toto mange du gateau");
+
+```
+*/
+
 mod key;
 mod metadata;
 mod public_key;
@@ -14,6 +174,7 @@ pub use signing_key::SigningKey;
 
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
 
+/// Error which can occur when using the crate
 pub mod error {
     pub use crate::signature::builder::SignatureBuilderError;
     pub use crate::signature::SignatureError;
