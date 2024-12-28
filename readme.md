@@ -1,5 +1,9 @@
 # sigserlic
 
+![CI status](https://github.com/deadbaed/sigserlic/actions/workflows/ci.yml/badge.svg)
+[![crates.io version](https://img.shields.io/crates/v/sigserlic)](https://crates.io/crates/sigserlic)
+[![docs.rs](https://img.shields.io/docsrs/sigserlic)](https://docs.rs/sigserlic)
+
 The **sig**nify **ser**de **lic**ense system.
 
 Rust library to combine [serde](https://serde.rs) with [libsignify](https://docs.rs/libsignify). Based on [openbsd signify](https://man.openbsd.org/signify).
