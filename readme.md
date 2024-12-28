@@ -146,7 +146,6 @@ When implementating a key rotation system, do not forget what should happen for 
 
 ## TODO
 
-- [ ] Better documentation, the examples are not enough imo
 - [ ] Actually enforce expiration on keys/signatures, they do nothing at the moment
 - [ ] Support passphrases on keys
 - [ ] Better types when wanting to sign or verify signatures, maybe behind features?
