@@ -1,0 +1,43 @@
+name: Rust
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # test library without any features
+      - run: cargo test --lib --no-default-features
+      # use all features: build examples and run all tests
+      - run: cargo build --examples --all-features
+      - run: cargo test --all-features
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo clippy --all-targets --all-features
+      - run: cargo fmt --check
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # generate signing key
+      - run: cargo run --example generate_key_json --features="generate" -- "testing key"
+      # from signing key to public key
+      - run: cargo run --example from_signing_key_to_public_key
+      # generate signing key and display info
+      - run: cargo run --example generate_key_json --features="generate" "testing signing keys" | cargo run --example import_signing_key
+      # sign message
+      - run: cargo run --example sign_message
+      # verify message
+      - run: cargo run --example verify_message
