@@ -14,7 +14,7 @@ My goal is to have some kind of licensing system for a project I am working on.
 
 I was always wondering how a licensing sytem was working, and from time to time I was reading [some](https://matradomski.com/posts/local_license_key_verification_theory/) [articles](https://keygen.sh/blog/how-to-generate-license-keys/) on the subject, but I never had the time and need to implement that, until now!
 
-Having the prior experience of coding an auth service with JWTs I tried [pasetors](https://docs.rs/pasetors/), a Rust implementation of [paseto](https://paseto.io). It worked pretty well and I liked the format, but paseto is for signing short-lived access tokens, and I am not doing that.
+Having the prior experience of coding an auth service with JWTs I tried [pasetors](https://docs.rs/pasetors/), a Rust implementation of [paseto](https://paseto.io). It worked pretty well and I liked the format, but paseto is for signing short-lived access tokens, and I am not doing that. (in retrospect paseto can be used for long-lived tokens, and I could have used paseto for this licensing system)
 
 I got a link (thanks Lara!) to [this excellent blog post](https://soatok.blog/2024/11/15/what-to-use-instead-of-pgp/), it is a great read! It gave me some ideas for my licensing system.
 
