@@ -20,7 +20,7 @@ let key = SigningKey::<Comment>::generate();
 
 // Import an existing key (here encoded in json)
 let json = r#"{
-  "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+  "secret_key": "RWRCSwAAAADSJSpBLNHNIzTs0FMnX7paPcnmr795lupZeb8cfPFAOqtZeVxFArUaQirh3mbooWQkKXzG8pxBJ9Phf24z0b1QYYp6GWtCHbEYK7PUbXVsv6tU4lS3MH5sylrYLGdOcRs=",
   "created_at": "2024-12-24T15:02:48.845298Z",
   "expired_at": null,
   "comment": "testing key, do not use"
@@ -32,7 +32,7 @@ let key: SigningKey<String> = serde_json::from_str(json).unwrap();
 
 ```
 # let json = r#"{
-#   "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+#   "secret_key": "RWRCSwAAAADSJSpBLNHNIzTs0FMnX7paPcnmr795lupZeb8cfPFAOqtZeVxFArUaQirh3mbooWQkKXzG8pxBJ9Phf24z0b1QYYp6GWtCHbEYK7PUbXVsv6tU4lS3MH5sylrYLGdOcRs=",
 #   "created_at": "2024-12-24T15:02:48.845298Z",
 #   "expired_at": null,
 #   "comment": "testing key, do not use"
@@ -42,7 +42,7 @@ use sigserlic::PublicKey;
 let public_key = PublicKey::from(key);
 
 assert_eq!(serde_json::to_string_pretty(&public_key).unwrap(), r#"{
-  "public_key": "45645979bf1c7cf1403a618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+  "public_key": "RWRZeb8cfPFAOmGKehlrQh2xGCuz1G11bL+rVOJUtzB+bMpa2CxnTnEb",
   "created_at": "2024-12-24T15:02:48.845298Z",
   "expired_at": null,
   "comment": "testing key, do not use"
@@ -54,7 +54,7 @@ assert_eq!(serde_json::to_string_pretty(&public_key).unwrap(), r#"{
 
 ```
 # let json = r#"{
-#   "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+#   "secret_key": "RWRCSwAAAADSJSpBLNHNIzTs0FMnX7paPcnmr795lupZeb8cfPFAOqtZeVxFArUaQirh3mbooWQkKXzG8pxBJ9Phf24z0b1QYYp6GWtCHbEYK7PUbXVsv6tU4lS3MH5sylrYLGdOcRs=",
 #   "created_at": "2024-12-24T15:02:48.845298Z",
 #   "expired_at": null,
 #   "comment": "testing key, do not use"
@@ -143,7 +143,7 @@ assert_eq!(serde_json::to_string_pretty(&signature).unwrap(), r#"{
 type MySignature = sigserlic::Signature<MyMessage, Comment>;
 let signature: MySignature = serde_json::from_str(json).unwrap();
 # let public_key: sigserlic::PublicKey<String> = serde_json::from_str(r#"{
-#   "public_key": "45645979bf1c7cf1403a618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+    "public_key": "RWRZeb8cfPFAOmGKehlrQh2xGCuz1G11bL+rVOJUtzB+bMpa2CxnTnEb",
 #   "created_at": "2024-12-24T15:02:48.845298Z",
 #   "expired_at": null,
 #   "comment": "testing key, do not use"

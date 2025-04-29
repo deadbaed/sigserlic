@@ -23,6 +23,7 @@ impl<Comment: std::fmt::Debug> std::fmt::Debug for SigningKey<Comment> {
 }
 
 mod signing_key_serde {
+    use base64ct::Encoding;
     use libsignify::{Codeable, PrivateKey};
     use serde::{Deserialize, Deserializer, Serializer};
 
@@ -30,16 +31,17 @@ mod signing_key_serde {
     where
         S: Serializer,
     {
-        let key_in_hex = hex::encode(key.as_bytes());
-        serializer.serialize_str(&key_in_hex)
+        let encoded = base64ct::Base64::encode_string(key.as_bytes().as_ref());
+        serializer.serialize_str(&encoded)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<PrivateKey, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let key_in_hex: String = Deserialize::deserialize(deserializer)?;
-        let key_in_bytes = hex::decode(key_in_hex).map_err(serde::de::Error::custom)?;
+        let key_in_base64: String = Deserialize::deserialize(deserializer)?;
+        let key_in_bytes =
+            base64ct::Base64::decode_vec(&key_in_base64).map_err(serde::de::Error::custom)?;
         PrivateKey::from_bytes(&key_in_bytes).map_err(serde::de::Error::custom)
     }
 }
@@ -163,7 +165,7 @@ mod tests {
 
     #[test]
     fn debug_fmt_do_not_leak_secret_key() {
-        let json = r#"{"secret_key":"4564424b00000000fb39dd26b3daa32bba433e2d7ed3ba61906dccfb6bbfb4ff97ae37ea877e588cdb275863f814f5e2639d808bdf56dc0d142abb7ae6267d6d88489c0671eb70f8768a41d8a506a0b2d02d9b43332495785a30f19a7fd17f78eb9423ce8bc8b026","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
+        let json = r#"{"secret_key":"RWRCSwAAAAD7Od0ms9qjK7pDPi1+07phkG3M+2u/tP+Xrjfqh35YjNsnWGP4FPXiY52Ai99W3A0UKrt65iZ9bYhInAZx63D4dopB2KUGoLLQLZtDMySVeFow8Zp/0X9465QjzovIsCY=","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
         let key: SigningKey<()> = serde_json::from_str(json).unwrap();
 
         assert!(format!("{key:?}").contains("<secret>"));
@@ -308,7 +310,7 @@ mod tests {
 
             #[test]
             fn json() {
-                let json = r#"{"secret_key":"4564424b00000000fb39dd26b3daa32bba433e2d7ed3ba61906dccfb6bbfb4ff97ae37ea877e588cdb275863f814f5e2639d808bdf56dc0d142abb7ae6267d6d88489c0671eb70f8768a41d8a506a0b2d02d9b43332495785a30f19a7fd17f78eb9423ce8bc8b026","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
+                let json = r#"{"secret_key":"RWRCSwAAAAD7Od0ms9qjK7pDPi1+07phkG3M+2u/tP+Xrjfqh35YjNsnWGP4FPXiY52Ai99W3A0UKrt65iZ9bYhInAZx63D4dopB2KUGoLLQLZtDMySVeFow8Zp/0X9465QjzovIsCY=","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
                 let key: SigningKey<()> = serde_json::from_str(json).unwrap();
                 assert!(key.metadata.comment.is_none());
                 assert!(key.metadata.expired_at.is_none());
@@ -344,7 +346,7 @@ mod tests {
 
             #[test]
             fn json() {
-                let json = r#"{"secret_key":"4564424b000000002aa0df27527f7713a80462e8aa75f241627b795f47fe550d5c8a4e9be08997d78dee98c8a3e8bc009107eeffb5499266f2126311d6d5b52da1f99e034543fc04c9a0f296399d7295175fde8aca20140da705cdd58ddcc34711cb84f37572c566","created_at":"2024-12-22T23:21:47.572035Z","expired_at":null,"comment":"testing key"}"#;
+                let json = r#"{"secret_key":"RWRCSwAAAAAqoN8nUn93E6gEYuiqdfJBYnt5X0f+VQ1cik6b4ImX143umMij6LwAkQfu/7VJkmbyEmMR1tW1LaH5ngNFQ/wEyaDyljmdcpUXX96KyiAUDacFzdWN3MNHEcuE83VyxWY=","created_at":"2024-12-22T23:21:47.572035Z","expired_at":null,"comment":"testing key"}"#;
 
                 let key: SigningKey<String> = serde_json::from_str(json).unwrap();
                 assert_eq!(key.metadata.comment, Some("testing key".into()));
@@ -391,7 +393,7 @@ mod tests {
 
             #[test]
             fn json() {
-                let json = r#"{"secret_key":"4564424b00000000c47ee7ba8be2cef37595a232c65f0729917cb7b54b6dd8b3831e1fece2c981509208e897d6ba61a5e6d5098c09ee67d4002409e80dd764e5ea3ac80c43c980f2e92b15ac67c42c873774fdb3475d3e58823d7e52c20465d9ae2ab920792edbee","created_at":"2024-12-23T00:27:59.297345Z","expired_at":"2025-06-15T15:06:40Z","comment":{"name":"Phil","age":24,"awesome":true}}"#;
+                let json = r#"{"secret_key":"RWRCSwAAAADEfue6i+LO83WVojLGXwcpkXy3tUtt2LODHh/s4smBUJII6JfWumGl5tUJjAnuZ9QAJAnoDddk5eo6yAxDyYDy6SsVrGfELIc3dP2zR10+WII9flLCBGXZriq5IHku2+4=","created_at":"2024-12-23T00:27:59.297345Z","expired_at":"2025-06-15T15:06:40Z","comment":{"name":"Phil","age":24,"awesome":true}}"#;
 
                 let key: SigningKey<MyStruct> = serde_json::from_str(json).unwrap();
                 assert_eq!(

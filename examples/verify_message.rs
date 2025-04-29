@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Key `{keynum} has been used to sign this message");
 
     // Import public key
-    let public_key: PublicKey<String> = serde_json::from_str(r#"{"public_key":"45645979bf1c7cf1403a618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b","created_at":"2024-12-24T15:02:48.845298Z","expired_at":null,"comment":"testing key, do not use"}"#).expect("Deserialize public key");
+    let public_key: PublicKey<String> = serde_json::from_str(r#"{"public_key":"RWRZeb8cfPFAOmGKehlrQh2xGCuz1G11bL+rVOJUtzB+bMpa2CxnTnEb","created_at":"2024-12-24T15:02:48.845298Z","expired_at":null,"comment":"testing key, do not use"}"#).expect("Deserialize public key");
 
     // Use public key to verify signature
     let original_message = signature.verify(&public_key).expect("Valid message");

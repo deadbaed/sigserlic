@@ -51,7 +51,7 @@ Comments and expiration are optional if you do not have a need for them.
 
 ```json
 {
-  "secret_key": "4564424b00000000d2252a412cd1cd2334ecd053275fba5a3dc9e6afbf7996ea5979bf1c7cf1403aab59795c4502b51a422ae1de66e8a16424297cc6f29c4127d3e17f6e33d1bd50618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+  "secret_key": "RWRCSwAAAADSJSpBLNHNIzTs0FMnX7paPcnmr795lupZeb8cfPFAOqtZeVxFArUaQirh3mbooWQkKXzG8pxBJ9Phf24z0b1QYYp6GWtCHbEYK7PUbXVsv6tU4lS3MH5sylrYLGdOcRs=",
   "created_at": "2024-12-24T15:02:48.845298Z",
   "expired_at": null,
   "comment": "testing key, do not use"
@@ -62,7 +62,7 @@ Comments and expiration are optional if you do not have a need for them.
 
 ```json
 {
-  "public_key": "45645979bf1c7cf1403a618a7a196b421db1182bb3d46d756cbfab54e254b7307e6cca5ad82c674e711b",
+  "public_key": "RWRZeb8cfPFAOmGKehlrQh2xGCuz1G11bL+rVOJUtzB+bMpa2CxnTnEb",
   "created_at": "2024-12-24T15:02:48.845298Z",
   "expired_at": null,
   "comment": "testing key, do not use"

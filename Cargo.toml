@@ -21,7 +21,6 @@ snafu = "0.8"
 # serde helpers
 base64ct = { version = "1", features = ["std"] }
 bincode = { version = "2", features = ["serde"] }
-hex = "0.4.3"
 
 # key generation
 rand_core = { version = "0.6", optional = true, features = ["std"] }

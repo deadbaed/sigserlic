@@ -131,7 +131,7 @@ impl<'de, M: Serialize + Deserialize<'de>, C> SignatureBuilder<M, C> {
 mod tests {
     use super::*;
 
-    const SIGNING_KEY_JSON: &str = r#"{"secret_key":"4564424b00000000fb39dd26b3daa32bba433e2d7ed3ba61906dccfb6bbfb4ff97ae37ea877e588cdb275863f814f5e2639d808bdf56dc0d142abb7ae6267d6d88489c0671eb70f8768a41d8a506a0b2d02d9b43332495785a30f19a7fd17f78eb9423ce8bc8b026","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
+    const SIGNING_KEY_JSON: &str = r#"{"secret_key":"RWRCSwAAAAD7Od0ms9qjK7pDPi1+07phkG3M+2u/tP+Xrjfqh35YjNsnWGP4FPXiY52Ai99W3A0UKrt65iZ9bYhInAZx63D4dopB2KUGoLLQLZtDMySVeFow8Zp/0X9465QjzovIsCY=","created_at":"2024-12-23T00:12:54.53753Z","expired_at":null}"#;
 
     const TIMESTAMP_1: i64 = 1700000000;
     const TIMESTAMP_2: i64 = 1800000000;
