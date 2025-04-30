@@ -177,7 +177,7 @@ const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard
 
 /// Error which can occur when using the crate
 pub mod error {
-    pub use crate::signature::builder::SignatureBuilderError;
     pub use crate::signature::SignatureError;
+    pub use crate::signature::builder::SignatureBuilderError;
     pub use crate::timestamp::TimestampError;
 }

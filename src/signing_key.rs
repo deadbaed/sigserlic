@@ -1,6 +1,6 @@
-use crate::error::TimestampError;
 use crate::KeyMetadata;
 use crate::Metadata;
+use crate::error::TimestampError;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 /// A key with the capability of signing data, producing a [`Signature`](crate::Signature), which can be
