@@ -31,7 +31,7 @@ pub(crate) mod optional {
         S: Serializer,
     {
         match optional {
-            Some(ref value) => serializer.serialize_some(&value.to_string()),
+            Some(value) => serializer.serialize_some(&value.to_string()),
             None => serializer.serialize_none(),
         }
     }
